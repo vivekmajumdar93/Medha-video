@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { MedhaVideoLoop } from '@/components/entity/MedhaVideoLoop'
 import { FACULTIES, DEFAULT_SETTINGS } from '@/types'
 import { loadSettings, saveSettings, loadHistory, saveHistory, clearHistory, generateId, routeToFaculty, formatTime } from '@/lib/utils'
 import { PARTICLE_BURST_DURATION, PARTICLE_COUNT, SVAYAM_SELECTION_DELAY } from '@/lib/constants'
@@ -212,17 +213,7 @@ function VoidCanvas() {
 
 // ── MEDHĀ Entity ───────────────────────────────────────────────────────────────
 function MedhaEntity({ state, facultyColor }: { state: EntityState; facultyColor: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
   const cfg = STATE_CONFIG[state]
-
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    const play = () => v.play().catch(() => {})
-    v.addEventListener('canplay', play)
-    if (v.readyState >= 3) play()
-    return () => v.removeEventListener('canplay', play)
-  }, [])
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -249,12 +240,7 @@ function MedhaEntity({ state, facultyColor }: { state: EntityState; facultyColor
         }}
         style={{ width: '60vmin', height: '60vmin', position: 'relative', zIndex: 10 }}
       >
-        <video
-          ref={videoRef}
-          src="/assets/medha-dormant.mp4"
-          autoPlay loop muted playsInline preload="auto"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-        />
+        <MedhaVideoLoop src="/assets/medha-dormant.mp4" />
       </motion.div>
 
       {/* Pulse rings */}
