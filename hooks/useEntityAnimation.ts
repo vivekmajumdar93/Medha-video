@@ -38,7 +38,6 @@ export function useEntityAnimation(
 
     switch (state) {
       case 'dormant':
-      case 'meditation':
         tl.to(el, {
           scale: 1.018,
           y: -8,

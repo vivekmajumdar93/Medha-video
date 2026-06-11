@@ -7,6 +7,34 @@ import { loadSettings, saveSettings, loadHistory, saveHistory, clearHistory, gen
 import { PARTICLE_BURST_DURATION, PARTICLE_COUNT, SVAYAM_SELECTION_DELAY } from '@/lib/constants'
 import type { EntityState, FacultyId, Message, MedhaSettings, Attachment, VoiceState } from '@/types'
 
+// ── Speech recognition (not in lib.dom.d.ts) ───────────────────────────────────
+interface SpeechRecognitionResultLike {
+  isFinal: boolean
+  [index: number]: { transcript: string }
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number
+  results: SpeechRecognitionResultLike[] & { length: number }
+}
+
+interface SpeechRecognitionInstance extends EventTarget {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  start: () => void
+  stop: () => void
+  onstart: (() => void) | null
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+}
+
+type SpeechRecognitionWindow = typeof window & {
+  SpeechRecognition?: new () => SpeechRecognitionInstance
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance
+}
+
 // ── State visual config ────────────────────────────────────────────────────────
 const STATE_CONFIG: Record<EntityState, { scale: number; brightness: number; rotateRange: number; driftY: number; driftDuration: number; auraOpacity: number; pulseSpeed: number }> = {
   dormant:           { scale: 1.000, brightness: 1.00, rotateRange: 0,   driftY: 10, driftDuration: 7,   auraOpacity: 0.04, pulseSpeed: 6 },
@@ -471,7 +499,7 @@ export default function MedhaPage() {
 
   // Voice
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const synthRef = useRef<SpeechSynthesis | null>(null)
 
   // TTS
@@ -533,14 +561,15 @@ export default function MedhaPage() {
   // Voice input
   const startVoice = useCallback(async () => {
     if (!settings.voiceEnabled) return
-    const SR = window.SpeechRecognition || (window as unknown as { webkitSpeechRecognition: typeof SpeechRecognition }).webkitSpeechRecognition
+    const w = window as SpeechRecognitionWindow
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!SR) return
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true })
       const rec = new SR()
       rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US'
       rec.onstart = () => { setVoiceState('recording'); setEntityState('voice-listening') }
-      rec.onresult = (ev: SpeechRecognitionEvent) => {
+      rec.onresult = (ev: SpeechRecognitionEventLike) => {
         let final = '', interim = ''
         for (let i = ev.resultIndex; i < ev.results.length; i++) {
           if (ev.results[i].isFinal) final += ev.results[i][0].transcript
